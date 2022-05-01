@@ -1,4 +1,6 @@
-"""情感分析
+"""
+Sentiment Analysis
+@chs 情感分析
 """
 
 from jindai import PipelineStage, Plugin
@@ -7,7 +9,9 @@ from jindai.models import Paragraph
 
 
 class AutoSentimentAnalysis(PipelineStage):
-    """根据语种标识自动进行情感分析
+    """
+    Sentiment Analysis with SnowNLP
+    @chs 使用 SnowNLP 进行自动情感分析
     """
 
     def resolve(self, paragraph: Paragraph) -> Paragraph:
@@ -17,7 +21,7 @@ class AutoSentimentAnalysis(PipelineStage):
 
 
 class SentimentAnalysisPlugin(Plugin):
-    """情感分析插件"""
+    """Sentiment Analysis Plugin"""
 
     def __init__(self, pmanager, **config):
         super().__init__(pmanager, **config)
