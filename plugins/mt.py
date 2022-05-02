@@ -40,7 +40,7 @@ class RemoteTranslation(PipelineStage):
 
         resp = requests.post(self.server, json={
             'text': paragraph.content,
-            'source_lang': paragraph.lang,
+            'source_lang': paragraph.lang.upper() if paragraph.lang != 'auto' else 'auto',
             'target_lang': self.to_lang.upper()
         })
         try:
