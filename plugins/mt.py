@@ -2,6 +2,9 @@
 @chs 机器翻译
 """
 import requests
+import time
+import random
+import re
 from opencc import OpenCC
 
 from jindai.helpers import safe_import
@@ -32,24 +35,56 @@ class RemoteTranslation(PipelineStage):
         self.to_lang = to_lang if to_lang not in ('chs', 'cht') else 'zh'
         self.convert = OpenCC('s2t' if to_lang == 'cht' else 't2s').convert
 
+    def split_chunks(self, content):
+        """Split content into chunks of no more than 5000 characters"""
+        while len(content) > 5000:
+            res = re.match(r'.*[\.\?!。？！”’\'\"]', content)
+            if res:
+                yield res.group()
+                content = content[:len(res.group())]
+            else:
+                yield content[:5000]
+                content = content[5000:]
+        yield content
+
     def resolve(self, paragraph):
         """Translate the paragraph
         """
-        if not paragraph.content:
-            return
-
-        resp = requests.post(self.server, json={
-            'text': paragraph.content,
-            'source_lang': paragraph.lang.upper() if paragraph.lang != 'auto' else 'auto',
-            'target_lang': self.to_lang.upper()
-        })
+        result = ''
         try:
-            resp = resp.json()
-            paragraph.content = resp['data']
-            if self.to_lang == 'zh':
-                paragraph.content = self.convert(paragraph.content)
+            for chunk in self.split_chunks(paragraph.content):
+                chunk = chunk.strip()
+                if not chunk:
+                    continue
+
+                resp = requests.post(self.server, json={
+                    'text': chunk,
+                    'source_lang': paragraph.lang.upper() if paragraph.lang != 'auto' else 'auto',
+                    'target_lang': self.to_lang.upper()
+                })
+
+                resp = resp.json()
+                if resp.get('code') != 200:
+                    self.logger('Error while translating:',
+                                resp.get('msg', 'null message'))
+                    return
+
+                content = resp.json()['data']
+                if self.to_lang == 'zh':
+                    content = self.convert(content)
+                if not self.to_lang in ('zh', 'jp', 'kr'):
+                    result += ' '
+                result += content
+
+                time.sleep(1 + random.random())
+
         except ValueError:
             self.logger('Error while reading from remote server')
+            return
+
+        if result:
+            paragraph.content = result.strip()
+
         return paragraph
 
 
